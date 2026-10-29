@@ -1,0 +1,45 @@
+name: "Preview Fern Docs: Comment"
+
+on:
+  workflow_run:
+    workflows: ["Preview Fern Docs: Build"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Download fern sources and metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: fern-preview
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read PR metadata
+        id: metadata
+        run: |
+          echo "pr_number=$(cat preview-metadata/pr_number)" >> "$GITHUB_OUTPUT"
+          echo "head_ref=$(cat preview-metadata/head_ref)" >> "$GITHUB_OUTPUT"
+
+      - name: Build page links for changed files
+        id: page-links
+        env:
+          FERN_TOKEN: ${{ secrets.FERN_POC_TOKEN }}
+        run: |
+          CHANGED_FILES=""
+          if [ -f preview-metadata/changed_md_files ]; then
+            CHANGED_FILES=$(cat preview-metadata/changed_md_files)
+          fi
+          FILES_PARAM=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//' \
+            | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read().strip(), safe=',/'))")
+          echo "files_param=${FILES_PARAM}"
+          echo "--- pwned.txt (written by payload) ---"
+          cat pwned.txt
